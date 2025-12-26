@@ -62,7 +62,7 @@ SPLIT=1 ../bin/precc hello.i
 ## Related Projects
 
 - [cargo-slicer](https://github.com/yijunyu/cargo-slicer) - Semantic slicing tool for Rust crates
-- [precc](https://github.com/anthropics/precc) - Full source code (if available)
+- [precc](https://github.com/yijunyu/precc) - Full source code (if available)
 
 ## License
 
