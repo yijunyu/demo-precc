@@ -1,0 +1,77 @@
+// Minimal test case from /tmp/precc_exp_20251215_075826_01a9ecf-dirty/vim_amalg.i_2976.pu.c
+// Error at line 11282
+// Error: if_xcmdsrv.c:11282:21: error: ‘f_ch_canread’ undeclared here (not in a function); did you mean ‘ch_canread’?
+// Compile: gcc -E bug64.c -o bug64.i
+// Split: PASSTHROUGH_THRESHOLD=0 SPLIT=1 ../../target/release/precc bug64.i
+
+int f_settagstack();
+int f_setwinvar();
+int f_sha256();
+int f_shellescape();
+int f_shiftwidth();
+int f_sign_define();
+int f_sign_getdefined();
+int f_sign_getplaced();
+int f_sign_jump();
+int f_sign_place();
+int f_sign_placelist();
+int f_sign_undefine();
+int f_sign_unplace();
+int f_sign_unplacelist();
+int f_simplify();
+int f_sin();
+int f_sinh();
+int f_slice();
+int f_sort();
+int f_soundfold();
+int f_spellbadword();
+int f_spellsuggest();
+int f_split();
+int f_sqrt();
+int f_srand();
+int f_state();
+int f_str2blob();
+int f_str2float();
+int f_str2list();
+int f_str2nr();
+int f_strcharlen();
+int f_strcharpart();
+int f_strchars();
+int f_strdisplaywidth();
+int f_strftime();
+int f_strgetchar();
+int f_stridx();
+int f_string();
+int f_strlen();
+int f_strpart();
+int f_strptime();
+int f_strridx();
+int f_strtrans();
+int f_strutf16len();
+int f_strwidth();
+int f_submatch();
+int f_substitute();
+int f_swapfilelist();
+int f_swapinfo();
+int f_swapname();
+int f_synID();
+int f_synIDattr();
+int f_synIDtrans();
+int f_synconcealed();
+int f_synstack();
+int f_system();
+int f_systemlist();
+int f_tabpagebuflist();
+int f_tabpagenr();
+int f_tabpagewinnr();
+int f_tagfiles();
+int f_taglist();
+int f_tan();
+int f_tanh();
+int f_tempname();
+int f_terminalprops();
+int f_test_alloc_fail();
+int f_test_autochdir();
+int f_test_feedinput();
+int f_test_garbagecollect_now();
+int f_test_garbagecollect_soon();

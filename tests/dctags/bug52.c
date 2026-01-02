@@ -1,0 +1,77 @@
+// Minimal test case from /tmp/precc_exp_20251210_211303_07c1f9d/vim_amalg.i_1775.pu.c
+// Error at line 16478
+// Error: evalfunc.c:16478:52: error: ‘ex_breaklist’ undeclared here (not in a function); did you mean ‘breaklist’?
+// Compile: gcc -E bug52.c -o bug52.i
+// Split: PASSTHROUGH_THRESHOLD=0 SPLIT=1 ../../target/release/precc bug52.i
+
+int highlightID();
+int highlight_changed();
+int highlight_color();
+int highlight_exists();
+int highlight_has_attr();
+int histadd();
+int histdel();
+int histget();
+int histnr();
+int hlID();
+int hl_combine_attr();
+int hlexists();
+int hlget();
+int hlsearch();
+int hlset();
+int home_replace();
+int home_replace_save();
+int horizontal();
+int hostname();
+int iabbrev();
+int iabclear();
+int iemsg();
+int ignorecase();
+int ijump();
+int ilist();
+int im_save_status();
+int imap();
+int imapclear();
+int imenu();
+int import();
+int import_check_sourced_sid();
+int in_cinkeys();
+int in_old_script();
+int in_vim9script();
+int inc_cursor();
+int incl();
+int include();
+int index_tuple();
+int indexof();
+int indexof_tuple();
+int inindent();
+int init_regexp_timeout();
+int init_search_hl();
+int init_tv();
+int inoreabbrev();
+int inoremap();
+int inoremenu();
+int input();
+int inputdialog();
+int inputsecret();
+int ins_apply_autocmds();
+int ins_char();
+int ins_compl_accept_char();
+int ins_compl_active();
+int ins_compl_addfrommatch();
+int ins_compl_addleader();
+int ins_compl_bs();
+int ins_compl_cancel();
+int ins_compl_clear();
+int ins_compl_col();
+int ins_compl_col_range_attr();
+int ins_compl_delete();
+int ins_compl_enable_autocomplete();
+int ins_compl_enter_selects();
+int ins_compl_has_autocomplete();
+int ins_compl_has_shown_match();
+int ins_compl_init_get_longest();
+int ins_compl_insert();
+int ins_compl_is_match_selected();
+int ins_compl_lnum_in_range();
+int ins_compl_long_shown_match();

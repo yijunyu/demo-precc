@@ -1,0 +1,77 @@
+// Minimal test case from /tmp/precc_exp_20251215_074054_01a9ecf-dirty/vim_amalg.i_2026.pu.c
+// Error at line 9084
+// Error: ex_docmd.c:9084:44: error: ‘ex_nbkey’ undeclared here (not in a function)
+// Compile: gcc -E bug63.c -o bug63.i
+// Split: PASSTHROUGH_THRESHOLD=0 SPLIT=1 ../../target/release/precc bug63.i
+
+int ex_tabonly();
+int ex_tabs();
+int ex_tag();
+int ex_throw();
+int ex_try();
+int ex_type();
+int ex_undo();
+int ex_undojoin();
+int ex_undolist();
+int ex_unletlock();
+int ex_unmap();
+int ex_version();
+int ex_vim9script();
+int ex_vimgrep();
+int ex_viminfo();
+int ex_viusage();
+int ex_while();
+int ex_wincmd();
+int ex_winpos();
+int ex_winsize();
+int ex_wrongmodifier();
+int ex_wundo();
+int ex_xrestore();
+int expand_env_save();
+int expand_filename();
+int expand_wildcards();
+int fast_breakcheck();
+int fcs_choice();
+int fcs_reason();
+int file_ff_differs();
+int file_pat_to_reg_pat();
+int fill_foldcolumn();
+int fillchar_status();
+int fillchar_vsep();
+int filter();
+int final();
+int find_ex_command();
+int find_exported();
+int find_func();
+int find_hi_in_scoped_ht();
+int find_imported();
+int find_termcode();
+int find_typval_in_script();
+int find_var_in_scoped_ht();
+int find_wl_entry();
+int first();
+int fix_help_buffer();
+int fmarks_check_names();
+int fname_diff();
+int fname_expand();
+int fname_in();
+int fname_new();
+int fname_out();
+int foldUpdate();
+int foldUpdateAll();
+int foldclose();
+int folddashes();
+int folddoclosed();
+int folddoopen();
+int foldedCount();
+int foldend();
+int foldlevel();
+int foldmethodIsDiff();
+int foldmethodIsManual();
+int foldmethodIsSyntax();
+int foldstart();
+int free_buf_options();
+int free_buffer();
+int free_buffer_stuff();
+int free_callback();
+int free_cmdlines();

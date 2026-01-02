@@ -1,0 +1,77 @@
+// Minimal test case from /tmp/precc_exp_20251210_211358_07c1f9d/sqlite3.i_100.pu.c
+// Error at line 3613
+// Error: /tmp/precc_exp_20251210_211358_07c1f9d/sqlite3.i_100.pu.c:3613:5: error: conflicting types for ‘fopen64’; have ‘int()’
+// Compile: gcc -E bug53.c -o bug53.i
+// Split: PASSTHROUGH_THRESHOLD=0 SPLIT=1 ../../target/release/precc bug53.i
+
+typedef struct WhereRightJoin WhereRightJoin;
+typedef struct WhereTerm WhereTerm;
+typedef struct Window Window;
+typedef struct With With;
+typedef struct fts5_api fts5_api;
+typedef struct fts5_tokenizer fts5_tokenizer;
+typedef struct sqlite3 sqlite3;
+typedef struct sqlite3_api_routines sqlite3_api_routines;
+typedef struct sqlite3_backup sqlite3_backup;
+typedef struct sqlite3_context sqlite3_context;
+typedef struct sqlite3_file sqlite3_file;
+typedef struct sqlite3_index_info sqlite3_index_info;
+typedef struct sqlite3_io_methods sqlite3_io_methods;
+typedef struct sqlite3_mem_methods sqlite3_mem_methods;
+typedef struct sqlite3_module sqlite3_module;
+typedef struct sqlite3_mutex sqlite3_mutex;
+typedef struct sqlite3_mutex_methods sqlite3_mutex_methods;
+typedef struct sqlite3_pcache_methods sqlite3_pcache_methods;
+typedef struct sqlite3_pcache_methods2 sqlite3_pcache_methods2;
+typedef struct sqlite3_pcache_page sqlite3_pcache_page;
+typedef struct sqlite3_rtree_geometry sqlite3_rtree_geometry;
+typedef struct sqlite3_rtree_query_info sqlite3_rtree_query_info;
+typedef struct sqlite3_str sqlite3_str;
+typedef struct sqlite3_value sqlite3_value;
+typedef struct sqlite3_vfs sqlite3_vfs;
+typedef struct sqlite3_vtab sqlite3_vtab;
+typedef struct sqlite3_vtab_cursor sqlite3_vtab_cursor;
+int __arg();
+int __filename();
+int __format();
+int __format__();
+int __isoc99_fscanf();
+int __isoc99_scanf();
+int __isoc99_sscanf();
+int __isoc99_vfscanf();
+int __isoc99_vscanf();
+int __isoc99_vsscanf();
+int __leaf__();
+int __malloc__();
+int __modes();
+int __nothrow__();
+int __off();
+int __pos();
+int __scanf__();
+int __stream();
+int __whence();
+int bits();
+int common();
+int fgetpos64();
+int floatn();
+int fopen64();
+int freopen();
+int freopen64();
+int fseeko64();
+int fsetpos64();
+int ftello64();
+int gnu();
+int include();
+int mxValue();
+int nowValue();
+static int sqlite3BtreeConnectionCount();
+static void sqlite3BtreeEnterAll();
+static void sqlite3BtreeLeaveAll();
+static void *sqlite3BtreePager();
+static void *sqlite3DefaultMutex();
+static void sqlite3DeleteTable();
+static void sqlite3DeleteTrigger();
+static void *sqlite3MallocMutex();
+static void * sqlite3MallocZero();
+static void sqlite3MemoryBarrier();
+static int sqlite3MisuseError();

@@ -1,0 +1,24 @@
+[package]
+name = "demo-precc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rayon = "1.8"
+chrono = "0.4"        
+rand = "0.8"         
+
+[profile.release]
+debug = false
+lto = "thin"  # Cross-language LTO with C code
+codegen-units = 1
+opt-level = 3      # Maximum optimization
+panic = "abort"
+split-debuginfo = "on"
+
+[profile.test]
+debug = true
+
+# [[bin]]
+# name = "test-precc"
+# path = "src/test_precc.rs"
