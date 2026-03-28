@@ -38,10 +38,10 @@ jobs:
         env:
           TOKEN: ${{ secrets.PRIVATE_SOURCE_TOKEN }}
         run: |
-          git config --global url."https://${TOKEN}@github.com/".insteadOf "https://github.com/"
+          printf 'protocol=https\nhost=github.com\nusername=x-access-token\npassword=%s\n' "${TOKEN}" \
+            | git credential approve
           git clone --depth 1 --branch slice-linux-kernel \
             https://github.com/yijunyu/precc.git precc-src
-          git config --global --unset url."https://${TOKEN}@github.com/".insteadOf
 
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
