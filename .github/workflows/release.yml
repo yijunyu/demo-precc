@@ -34,24 +34,11 @@ jobs:
       - name: Checkout public repo (for install.sh, README, etc.)
         uses: actions/checkout@v4
 
-      - name: Check token is set
-        run: |
-          if [[ -z "${{ secrets.PRIVATE_SOURCE_TOKEN }}" ]]; then
-            echo "ERROR: PRIVATE_SOURCE_TOKEN is empty or not set" && exit 1
-          fi
-          echo "Token length: ${#TOKEN}" >> /dev/null
-          echo "PRIVATE_SOURCE_TOKEN is set"
-        env:
-          TOKEN: ${{ secrets.PRIVATE_SOURCE_TOKEN }}
-
       - name: Clone private source
-        uses: actions/checkout@v4
-        with:
-          repository: yijunyu/precc
-          ref: slice-linux-kernel
-          token: ${{ secrets.PRIVATE_SOURCE_TOKEN }}
-          path: precc-src
-          fetch-depth: 1
+        run: |
+          git clone --depth 1 --branch slice-linux-kernel \
+            "https://x-access-token:${{ secrets.PRIVATE_SOURCE_TOKEN }}@github.com/yijunyu/precc.git" \
+            precc-src
 
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
