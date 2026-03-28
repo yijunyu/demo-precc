@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# precc-kbuild — Kbuild wrapper that replaces a single gcc -c invocation
+# with the precc split+parallel pipeline.
+#
+# Drop-in replacement for:
+#   gcc $(c_flags) -c -o foo.o foo.c
+# becomes:
+#   precc-kbuild foo.c $(c_flags) -o foo.o
+#
+# Pipeline:
+#   1. gcc -E  → foo.i          (preprocess with exact kernel flags)
+#   2. precc   → .pu.c files    (split by symbol dependency)
+#   3. gcc -c  → .pu.o files    (parallel compile)
+#   4. ld -r   → foo.o          (merge into single .o expected by Kbuild)
+#
+# Environment:
+#   PRECC_BIN         path to precc binary (default: precc in PATH)
+#   PRECC_SPLIT_COUNT N for chunked mode; unset = one function per .pu.c
+#   PRECC_JOBS        parallel compile jobs (default: nproc)
+#   PRECC_KEEP_TMP    set to 1 to keep intermediate files for debugging
+#   CC                C compiler (default: gcc)
+#   PRECC_VERBOSE     set to 1 for verbose output
+#
+# TDD policy: if this script produces wrong output, reduce to a minimal
+# .c reproducer, add to tests/linux/, fix, verify all tests pass.
+
+set -euo pipefail
+
+PRECC_BIN="${PRECC_BIN:-precc}"
+CC="${CC:-gcc}"
+JOBS="${PRECC_JOBS:-$(nproc)}"
+KEEP_TMP="${PRECC_KEEP_TMP:-0}"
+VERBOSE="${PRECC_VERBOSE:-0}"
+SPLIT_COUNT="${PRECC_SPLIT_COUNT:-}"
+
+# ── Parse arguments ───────────────────────────────────────────────────────
+# Expect: <source.c> [compiler-flags...] -o <output.o>
+if [[ $# -lt 1 ]]; then
+    echo "Usage: precc-kbuild <source.c> [flags...] -o <output.o>" >&2
+    exit 1
+fi
+
+SOURCE="$1"; shift
+
+OUTPUT=""
+CFLAGS=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -o) OUTPUT="$2"; shift 2 ;;
+        -c) shift ;;  # we handle compilation ourselves
+        *)  CFLAGS+=("$1"); shift ;;
+    esac
+done
+
+if [[ -z "$OUTPUT" ]]; then
+    OUTPUT="${SOURCE%.c}.o"
+fi
+
+SOURCE_BASE="$(basename "${SOURCE%.c}")"
+WORK_DIR="$(dirname "$OUTPUT")/.precc-${SOURCE_BASE}"
+
+[[ $VERBOSE -eq 1 ]] && echo "[precc-kbuild] $SOURCE → $OUTPUT (jobs=$JOBS)"
+
+# ── Cleanup on exit (unless KEEP_TMP) ────────────────────────────────────
+cleanup() {
+    [[ $KEEP_TMP -eq 0 ]] && rm -rf "$WORK_DIR"
+}
+trap cleanup EXIT
+
+mkdir -p "$WORK_DIR"
+
+# ── Step 1: Preprocess ────────────────────────────────────────────────────
+PREPROCESSED="$WORK_DIR/${SOURCE_BASE}.i"
+[[ $VERBOSE -eq 1 ]] && echo "[precc-kbuild] Step 1: preprocessing..."
+
+"$CC" "${CFLAGS[@]}" -E "$SOURCE" -o "$PREPROCESSED"
+
+PREPROC_SIZE=$(wc -c < "$PREPROCESSED")
+[[ $VERBOSE -eq 1 ]] && echo "[precc-kbuild]   preprocessed: ${PREPROC_SIZE} bytes"
+
+# ── Step 2: Split with precc ──────────────────────────────────────────────
+[[ $VERBOSE -eq 1 ]] && echo "[precc-kbuild] Step 2: splitting with precc..."
+
+SPLIT_ENV=()
+if [[ -n "$SPLIT_COUNT" ]]; then
+    SPLIT_ENV+=("SPLIT_COUNT=$SPLIT_COUNT")
+fi
+
+env SPLIT=1 "${SPLIT_ENV[@]}" "$PRECC_BIN" "$PREPROCESSED" 2>/dev/null || {
+    # If precc fails, fall back to plain compilation and record for TDD
+    echo "[precc-kbuild] WARNING: precc failed on $SOURCE, falling back to gcc" >&2
+    echo "[precc-kbuild] TDD: add $SOURCE as a regression test in tests/linux/" >&2
+    "$CC" "${CFLAGS[@]}" -c "$SOURCE" -o "$OUTPUT"
+    exit 0
+}
+
+# Collect generated .pu.c files
+PU_FILES=("$WORK_DIR"/*.pu.c 2>/dev/null || true)
+# precc writes .pu.c next to the .i file by default; move them to WORK_DIR
+PU_FILES_SRC=($(ls "$(dirname "$PREPROCESSED")"/*.pu.c 2>/dev/null || true))
+
+if [[ ${#PU_FILES_SRC[@]} -eq 0 ]]; then
+    echo "[precc-kbuild] WARNING: no .pu.c files generated for $SOURCE, falling back" >&2
+    "$CC" "${CFLAGS[@]}" -c "$SOURCE" -o "$OUTPUT"
+    exit 0
+fi
+
+mv "${PU_FILES_SRC[@]}" "$WORK_DIR/"
+PU_FILES=("$WORK_DIR"/*.pu.c)
+
+[[ $VERBOSE -eq 1 ]] && echo "[precc-kbuild]   split into ${#PU_FILES[@]} .pu.c files"
+
+# ── Step 3: Parallel compile ──────────────────────────────────────────────
+[[ $VERBOSE -eq 1 ]] && echo "[precc-kbuild] Step 3: parallel compile (j=$JOBS)..."
+
+PU_OBJECTS=()
+compile_pu() {
+    local pu="$1"
+    local obj="${pu%.pu.c}.pu.o"
+    "$CC" -O2 -c "$pu" -o "$obj" 2>/dev/null || {
+        echo "[precc-kbuild] ERROR: failed to compile $pu" >&2
+        echo "[precc-kbuild] TDD: add minimal reproducer to tests/linux/" >&2
+        return 1
+    }
+    echo "$obj"
+}
+
+export -f compile_pu
+export CC
+
+OBJ_LIST=$(printf '%s\n' "${PU_FILES[@]}" | \
+    xargs -P "$JOBS" -I{} bash -c 'compile_pu "$@"' _ {})
+
+mapfile -t PU_OBJECTS <<< "$OBJ_LIST"
+
+if [[ ${#PU_OBJECTS[@]} -eq 0 ]]; then
+    echo "[precc-kbuild] ERROR: no .pu.o files produced" >&2
+    exit 1
+fi
+
+# ── Step 4: Merge with ld -r ──────────────────────────────────────────────
+[[ $VERBOSE -eq 1 ]] && echo "[precc-kbuild] Step 4: merging ${#PU_OBJECTS[@]} objects..."
+
+ld -r -o "$OUTPUT" "${PU_OBJECTS[@]}"
+
+[[ $VERBOSE -eq 1 ]] && echo "[precc-kbuild] done: $OUTPUT ($(wc -c < "$OUTPUT") bytes)"

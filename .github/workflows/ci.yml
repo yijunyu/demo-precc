@@ -1,0 +1,272 @@
+name: CI
+
+on:
+  push:
+    branches: [main, ci]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_perf_tests:
+        description: 'Run performance tests'
+        required: false
+        default: false
+        type: boolean
+      run_vim_tests:
+        description: 'Run vim integration tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Build and test on Linux x86_64
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            gawk \
+            python3
+
+      - name: Install Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install Rust toolchain (nightly)
+        run: rustup install nightly
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-
+
+      - name: Cache Cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: cargo-build-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}-${{ hashFiles('src/wrapper.c', 'src/ctags/*.c', 'src/ctags/*.h', 'build.rs') }}
+          restore-keys: |
+            cargo-build-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}-
+            cargo-build-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-build-${{ runner.os }}-
+
+      - name: Force rebuild of precc if C sources changed
+        run: cargo clean -p precc 2>/dev/null || true
+
+      - name: Build (debug)
+        run: cargo build --verbose
+
+      - name: Build (release)
+        run: cargo +nightly build --release --verbose
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+        continue-on-error: true
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+        continue-on-error: true
+
+      - name: Run unit tests
+        run: cargo test --lib --verbose
+
+      - name: Run bug tests
+        run: cargo test test_bug --verbose -- --nocapture
+
+      - name: Upload debug binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: precc-linux-debug
+          path: target/debug/precc
+          retention-days: 7
+
+      - name: Upload release binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: precc-linux-release
+          path: target/release/precc
+          retention-days: 7
+
+  # Build and test on macOS
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          brew install gawk coreutils
+
+      - name: Install Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install Rust toolchain (nightly)
+        run: rustup install nightly
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-registry-${{ runner.os }}-
+
+      - name: Cache Cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: cargo-build-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}-${{ hashFiles('src/wrapper.c', 'src/ctags/*.c', 'src/ctags/*.h', 'build.rs') }}
+          restore-keys: |
+            cargo-build-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}-
+            cargo-build-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+            cargo-build-${{ runner.os }}-
+
+      - name: Force rebuild of precc if C sources changed
+        run: cargo clean -p precc 2>/dev/null || true
+
+      - name: Build (debug)
+        run: cargo build --verbose
+
+      - name: Build (release)
+        run: cargo +nightly build --release --verbose
+
+      - name: Run unit tests
+        run: cargo test --lib --verbose
+
+      - name: Run bug tests
+        run: cargo test test_bug --verbose -- --nocapture
+
+      - name: Upload debug binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: precc-macos-debug
+          path: target/debug/precc
+          retention-days: 7
+
+      - name: Upload release binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: precc-macos-release
+          path: target/release/precc
+          retention-days: 7
+
+  # Performance tests (only on Linux for consistency)
+  perf-test:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.pull_request.draft == false || (github.event_name == 'workflow_dispatch' && inputs.run_perf_tests)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install nightly toolchain
+        run: rustup install nightly
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-perf-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release
+        run: cargo +nightly build --release
+
+      - name: Create test file
+        run: |
+          mkdir -p rust
+          # Create a simple test file if rre_tlv_original.c doesn't exist
+          if [ ! -f rre_tlv_original.c ]; then
+            echo "// Test file for CI" > rre_tlv_original.c
+            echo "int main() { return 0; }" >> rre_tlv_original.c
+          fi
+
+      - name: Run performance tests
+        run: cargo test --release test_perf -- --nocapture
+        continue-on-error: true
+
+  # Integration tests with vim source (optional, runs on schedule or manual trigger)
+  vim-integration:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[vim-test]') || (github.event_name == 'workflow_dispatch' && inputs.run_vim_tests)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-vim-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Clone vim source
+        run: |
+          mkdir -p tests/vim
+          git clone --depth 1 https://github.com/vim/vim tests/vim-repo
+          cp -r tests/vim-repo/src tests/vim/
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Run vim compilation tests
+        run: cargo test test_vim --release -- --nocapture
+        continue-on-error: true
+
+  # Security audit
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run security audit
+        run: cargo audit
+        continue-on-error: true

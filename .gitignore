@@ -1,6 +1,12 @@
 *.pu.c
 *.i
 *.o
-profile.json
 perf.data
 target
+.slicer-cache/
+tests/sqlite3/
+tests/vim/
+*.precc-config.toml
+*.pch.h
+*.unity.c
+*.db
