@@ -1,0 +1,106 @@
+name: Release
+
+# Builds precc binaries for multiple platforms and uploads them to a GitHub release.
+# Triggered on release tags or manually.
+# Source is fetched from the private yijunyu/precc repo using PRIVATE_SOURCE_TOKEN.
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  REPO: yijunyu/demo-precc
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+
+    steps:
+      - name: Checkout public repo (for install.sh, README, etc.)
+        uses: actions/checkout@v4
+
+      - name: Clone private source
+        uses: actions/checkout@v4
+        with:
+          repository: yijunyu/precc
+          ref: slice-linux-kernel
+          token: ${{ secrets.PRIVATE_SOURCE_TOKEN }}
+          path: precc-src
+          fetch-depth: 1
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Install Rust stable toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep '^version' precc-src/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          [[ -z "$VERSION" ]] && VERSION="0.1.0"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: precc-registry-${{ runner.os }}-stable
+          restore-keys: precc-registry-${{ runner.os }}-
+
+      - name: Build binaries
+        run: |
+          cargo install --path precc-src \
+            --bin precc --bin precc-sweep \
+            --root /tmp/precc-install
+          mkdir -p dist
+
+      - name: Package bundle
+        id: package
+        run: |
+          TARGET="${{ matrix.target }}"
+          ASSET="precc-${TARGET}.tar.gz"
+          STAGING="$(mktemp -d)"
+          cp /tmp/precc-install/bin/precc "$STAGING/"
+          cp /tmp/precc-install/bin/precc-sweep "$STAGING/"
+          tar -czf "dist/$ASSET" -C "$STAGING" .
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+          echo "Created: dist/$ASSET ($(du -sh "dist/$ASSET" | cut -f1))"
+
+      - name: Ensure release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if ! gh release view "$TAG" --repo "$REPO" &>/dev/null; then
+            gh release create "$TAG" --repo "$REPO" \
+              --title "precc $TAG" --notes "precc $TAG" || true
+          fi
+
+      - name: Upload bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.version.outputs.tag }}" \
+            "dist/${{ steps.package.outputs.asset }}" \
+            --repo "$REPO" --clobber
+          echo "Uploaded: ${{ steps.package.outputs.asset }}"

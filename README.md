@@ -1,16 +1,31 @@
 # precc
-A demo of the `precc` precompiler for C/C++ (e.g., GCC, Clang), which is
-fundamentally a high-performance C/C++ file splitter that breaks large source
-files into smaller compilation units based on function and variable
-dependencies.
+
+A high-performance C/C++ precompiler that splits large translation units into
+smaller parallel compilation units, with cluster-based PCH support for dramatic
+build speedups on codebases like SQLite, Vim, and the Linux kernel.
+
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yijunyu/demo-precc/main/install.sh | sh
+```
 
 ## Usage
 
 ```bash
-cargo build --release # Build release version
-cargo run --release # the Sqlite3 amalgation test case
-cargo run --release -- --vim # the Vim test case
-UNITY=1 SPLIT=1 cargo run --release -- --vim # the Vim test case with optimal balance of size and split of compilation units
-bin/precc <filename.i> # Process without splitting
-UNITY=1 SPLIT=1 bin/precc <filename.i> # Process with splitting
+# Split a preprocessed C file into parallel compilation units
+precc file.i
+
+# Cluster-PCH mode (groups functions by header dependency, generates shared PCH)
+PRECC_PCH_CLUSTER=1 precc file.i
+
+# Sweep compilation strategies to find optimal configuration
+precc-sweep --ifile file.i --project myproject --reps 3 --summary
 ```
+
+## Platforms
+
+| Platform | Architecture |
+|----------|-------------|
+| Linux    | x86_64      |
+| macOS    | aarch64     |
