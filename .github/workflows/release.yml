@@ -34,6 +34,16 @@ jobs:
       - name: Checkout public repo (for install.sh, README, etc.)
         uses: actions/checkout@v4
 
+      - name: Check token is set
+        run: |
+          if [[ -z "${{ secrets.PRIVATE_SOURCE_TOKEN }}" ]]; then
+            echo "ERROR: PRIVATE_SOURCE_TOKEN is empty or not set" && exit 1
+          fi
+          echo "Token length: ${#TOKEN}" >> /dev/null
+          echo "PRIVATE_SOURCE_TOKEN is set"
+        env:
+          TOKEN: ${{ secrets.PRIVATE_SOURCE_TOKEN }}
+
       - name: Clone private source
         uses: actions/checkout@v4
         with:
